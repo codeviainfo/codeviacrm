@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
+
+enum ClientStatus {
+  lead
+  prospect
+  client
+  inactive
+  archived
+}
+
+enum ClientSource {
+  manual
+  google_maps
+}
+
+model Client {
+  id            String        @id @default(uuid())
+  name          String
+  businessName  String?
+  category      String?
+  phone         String?
+  email         String?
+  address       String?
+  city          String?
+  zone          String?
+  notes         String?
+  status        ClientStatus  @default(lead)
+  source        ClientSource  @default(manual)
+  googlePlaceId String?       @unique
+  rating        Float?
+  website       String?
+  latitude      Float?
+  longitude     Float?
+  googleMapsUrl String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  appointments  Appointment[]
+  services      Service[]
+
+  @@index([status])
+  @@index([category])
+  @@index([zone])
+}
+
+enum ServiceStatus {
+  pending
+  completed
+  invoiced
+}
+
+model Service {
+  id          String        @id @default(uuid())
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  quantity    Float         @default(1)
+  unitPrice   Float
+  status      ServiceStatus @default(pending)
+  date        DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  clientId        String
+  client          Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  scheduledAt     DateTime
+  durationMinutes Int               @default(30)
+  status          AppointmentStatus @default(pending)
+  createdAt       DateTime          @default(now())
+
+  @@index([scheduledAt])
+}
+
+enum ScrapeJobStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+model ScrapeJob {
+  id            String            @id @default(uuid())
+  zone          String
+  category      String
+  status        ScrapeJobStatus   @default(pending)
+  source        String?
+  resultsCount  Int               @default(0)
+  errorMessage  String?
+  createdAt     DateTime          @default(now())
+  candidates    ScrapeCandidate[]
+}
+
+enum CandidateStatus {
+  pending
+  accepted
+  rejected
+}
+
+// Staging row for a business found by a scrape run, before the user
+// reviews it and decides whether to promote it to a Client (status=lead).
+model ScrapeCandidate {
+  id            String          @id @default(uuid())
+  jobId         String
+  job           ScrapeJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name          String
+  businessName  String?
+  category      String?
+  phone         String?
+  address       String?
+  zone          String?
+  rating        Float?
+  website       String?
+  hasWebsite    Boolean         @default(false)
+  latitude      Float?
+  longitude     Float?
+  googlePlaceId String?
+  googleMapsUrl String?
+  status        CandidateStatus @default(pending)
+  clientId      String?
+  createdAt     DateTime        @default(now())
+
+  @@index([jobId])
+  @@index([status])
+  @@index([hasWebsite])
+}

@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - backend_dev_nm:/app/node_modules
+    command: >-
+      sh -c "npx prisma generate &&
+             npx prisma migrate deploy &&
+             npm run seed &&
+             npm run dev"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - frontend_dev_nm:/app/node_modules
+    command: ./node_modules/.bin/vite --host 0.0.0.0 --port 5173
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
+
+volumes:
+  backend_dev_nm:
+  frontend_dev_nm:

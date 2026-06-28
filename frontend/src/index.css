@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light theme: neutral surfaces/text as raw RGB channels (consumed by the
+     slate/surface Tailwind colors via `rgb(var(--token) / <alpha-value>)`). */
+  :root {
+    color-scheme: light;
+
+    --surface: 255 255 255;
+    --surface-muted: 248 250 252;
+
+    --slate-50: 248 250 252;
+    --slate-100: 241 245 249;
+    --slate-200: 226 232 240;
+    --slate-300: 203 213 225;
+    --slate-400: 148 163 184;
+    --slate-500: 100 116 139;
+    --slate-600: 71 85 105;
+    --slate-700: 51 65 85;
+    --slate-800: 30 41 59;
+    --slate-900: 15 23 42;
+    --slate-950: 2 6 23;
+
+    --page: 248 250 252;
+  }
+
+  /* Dark theme: surfaces go dark and the slate scale is inverted (light tokens
+     become dark, text tokens become light) so every existing `*-slate-*` /
+     `bg-surface` utility flips automatically. */
+  .dark {
+    color-scheme: dark;
+
+    --surface: 30 41 59; /* elevated cards/inputs/menus */
+    --surface-muted: 15 23 42;
+
+    --slate-50: 42 54 75; /* subtle hover/zebra, sits just above surface */
+    --slate-100: 51 65 85; /* chips, dividers, light borders */
+    --slate-200: 51 65 85; /* borders */
+    --slate-300: 71 85 105; /* stronger borders, scrollbar */
+    --slate-400: 148 163 184; /* muted text/icons */
+    --slate-500: 148 163 184; /* secondary text */
+    --slate-600: 203 213 225; /* body text, nav labels */
+    --slate-700: 226 232 240; /* strong text */
+    --slate-800: 241 245 249; /* names, subheadings */
+    --slate-900: 248 250 252; /* headings */
+    --slate-950: 248 250 252;
+
+    --page: 11 17 32;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply text-slate-800 antialiased font-sans;
+    margin: 0;
+    background-color: rgb(var(--page));
+    background-image: radial-gradient(
+        60rem 60rem at 110% -10%,
+        rgb(47 107 255 / 0.06),
+        transparent 60%
+      ),
+      radial-gradient(40rem 40rem at -10% 110%, rgb(47 107 255 / 0.05), transparent 60%);
+    background-attachment: fixed;
+    transition: background-color 0.2s ease;
+  }
+
+  .dark body {
+    background-image: radial-gradient(
+        60rem 60rem at 110% -10%,
+        rgb(47 107 255 / 0.1),
+        transparent 60%
+      ),
+      radial-gradient(40rem 40rem at -10% 110%, rgb(47 107 255 / 0.08), transparent 60%);
+  }
+
+  /* Native form controls inherit the brand focus ring */
+  input,
+  select,
+  textarea {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  /* Thin, unobtrusive scrollbars to match the refined surfaces */
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-300;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
