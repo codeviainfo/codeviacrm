@@ -120,6 +120,41 @@ model ScrapeJob {
   candidates    ScrapeCandidate[]
 }
 
+// Anonymous analytics session from the public landing (codeviaesp.com).
+// `id` is generated client-side (crypto.randomUUID) so events can be sent
+// fire-and-forget without waiting for a server response. No IP is stored,
+// only the country derived from it.
+model WebSession {
+  id          String     @id
+  country     String?
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  device      String?
+  language    String?
+  startedAt   DateTime   @default(now())
+  lastSeenAt  DateTime   @default(now())
+  events      WebEvent[]
+
+  @@index([startedAt])
+  @@index([country])
+}
+
+model WebEvent {
+  id        String     @id @default(uuid())
+  sessionId String
+  session   WebSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type      String
+  name      String?
+  path      String?
+  createdAt DateTime   @default(now())
+
+  @@index([sessionId])
+  @@index([type])
+  @@index([createdAt])
+}
+
 enum CandidateStatus {
   pending
   accepted

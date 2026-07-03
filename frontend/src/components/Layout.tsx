@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { cn, ThemeToggle } from "./ui";
 import {
   IconCalendar,
+  IconChart,
   IconClients,
   IconDashboard,
   IconKanban,
@@ -11,12 +12,13 @@ import {
   IconMap,
 } from "./icons";
 
-const nav: Array<{ to: string; label: string; icon: ReactNode; end?: boolean }> = [
+const nav: Array<{ to: string; label: string; sublabel?: string; icon: ReactNode; end?: boolean }> = [
   { to: "/", label: "Dashboard", icon: <IconDashboard />, end: true },
   { to: "/clients", label: "Clientes", icon: <IconClients /> },
   { to: "/kanban", label: "Seguimiento", icon: <IconKanban /> },
   { to: "/appointments", label: "Citas", icon: <IconCalendar /> },
   { to: "/scraper", label: "Captación Maps", icon: <IconMap /> },
+  { to: "/analytics", label: "Web Analytics", sublabel: "codeviaesp.com", icon: <IconChart /> },
 ];
 
 export function Layout() {
@@ -72,7 +74,12 @@ export function Layout() {
                   >
                     {item.icon}
                   </span>
-                  {item.label}
+                  <span className="flex flex-col leading-tight">
+                    {item.label}
+                    {item.sublabel && (
+                      <span className="text-[10px] font-normal text-slate-400">{item.sublabel}</span>
+                    )}
+                  </span>
                 </>
               )}
             </NavLink>
