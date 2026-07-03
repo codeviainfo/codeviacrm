@@ -1,7 +1,10 @@
 import { Router, Request } from "express";
 import express from "express";
 import { z } from "zod";
-import geoip from "geoip-lite";
+// fast-geoip lee los datos de disco bajo demanda (~2 MB de RAM) en lugar de
+// cargar toda la base en memoria (~100 MB con geoip-lite): imprescindible en
+// el VPS de 1 GB.
+import geoip from "fast-geoip";
 import { prisma } from "../lib/prisma";
 
 const router = Router();
@@ -81,7 +84,7 @@ router.post("/", async (req, res) => {
 
   try {
     // Solo se persiste el país derivado de la IP, nunca la IP.
-    const country = geoip.lookup(ip)?.country ?? null;
+    const country = (await geoip.lookup(ip))?.country ?? null;
 
     await prisma.webSession.upsert({
       where: { id: sessionId },

@@ -20,3 +20,10 @@ jobs:
             git pull origin main
             cd /opt/codevia/deploy
             make rebuild-crm
+            # Limpieza post-deploy (solo restos sin uso; no toca contenedores,
+            # imágenes en uso ni volúmenes como la BD del CRM):
+            # - imágenes "dangling" (capas viejas que deja cada rebuild)
+            # - caché de build por encima de 1GB (se conserva ese margen para
+            #   que los rebuilds sigan siendo rápidos)
+            docker image prune -f
+            docker builder prune -f --keep-storage=1GB
