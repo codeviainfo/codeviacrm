@@ -8,6 +8,7 @@ import { Appointments } from "./pages/Appointments";
 import { Scraper } from "./pages/Scraper";
 import { Kanban } from "./pages/Kanban";
 import { WebAnalytics } from "./pages/WebAnalytics";
+import { Trabajos } from "./pages/Trabajos";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/scraper" element={<Scraper />} />
         <Route path="/kanban" element={<Kanban />} />
+        <Route path="/trabajos" element={<Trabajos />} />
         <Route path="/analytics" element={<WebAnalytics />} />
       </Route>
     </Routes>

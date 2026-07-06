@@ -49,4 +49,13 @@ export interface Service {
   date: string;
   createdAt: string;
   updatedAt: string;
+  client?: {
+    id: string;
+    name: string;
+    businessName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+  };
 }

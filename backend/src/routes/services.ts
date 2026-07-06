@@ -6,13 +6,31 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/", async (req, res) => {
-  const { clientId } = req.query;
-  if (!clientId || typeof clientId !== "string") {
-    return res.status(400).json({ error: "clientId requerido" });
+  const { clientId, status, search, dateFrom, dateTo } = req.query;
+  const where: Record<string, unknown> = {};
+  if (clientId && typeof clientId === "string") where.clientId = clientId;
+  if (status && typeof status === "string") where.status = status;
+  if ((dateFrom && typeof dateFrom === "string") || (dateTo && typeof dateTo === "string")) {
+    where.date = {
+      ...(typeof dateFrom === "string" ? { gte: new Date(dateFrom) } : {}),
+      ...(typeof dateTo === "string" ? { lte: new Date(dateTo + "T23:59:59") } : {}),
+    };
+  }
+  if (search && typeof search === "string") {
+    where.OR = [
+      { title: { contains: search, mode: "insensitive" } },
+      { client: { name: { contains: search, mode: "insensitive" } } },
+      { client: { businessName: { contains: search, mode: "insensitive" } } },
+    ];
   }
   const services = await prisma.service.findMany({
-    where: { clientId },
+    where,
     orderBy: { date: "desc" },
+    include: {
+      client: {
+        select: { id: true, name: true, businessName: true, email: true, phone: true, address: true, city: true },
+      },
+    },
   });
   res.json(services);
 });
