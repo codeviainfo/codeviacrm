@@ -10,6 +10,8 @@ import dashboardRoutes from "./routes/dashboard";
 import servicesRoutes from "./routes/services";
 import trackRoutes from "./routes/track";
 import analyticsRoutes from "./routes/analytics";
+import canvaAuthRoutes from "./routes/canvaAuth";
+import designsRoutes from "./routes/designs";
 
 const app = express();
 
@@ -32,6 +34,8 @@ app.use("/api/geocode", geocodeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/services", servicesRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/canva", canvaAuthRoutes);
+app.use("/api/designs", designsRoutes);
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {

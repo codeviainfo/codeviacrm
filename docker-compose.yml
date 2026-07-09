@@ -29,6 +29,10 @@ services:
       GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@codevia.com}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-codevia123}
+      CANVA_CLIENT_ID: ${CANVA_CLIENT_ID:-}
+      CANVA_CLIENT_SECRET: ${CANVA_CLIENT_SECRET:-}
+      CANVA_REDIRECT_URI: ${CANVA_REDIRECT_URI:-http://localhost:4000/api/canva/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       PORT: 4000
     ports:
       - "4000:4000"

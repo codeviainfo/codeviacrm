@@ -11,6 +11,7 @@ import {
   IconKanban,
   IconLogout,
   IconMap,
+  IconPalette,
 } from "./icons";
 
 const nav: Array<{ to: string; label: string; sublabel?: string; icon: ReactNode; end?: boolean }> = [
@@ -20,6 +21,7 @@ const nav: Array<{ to: string; label: string; sublabel?: string; icon: ReactNode
   { to: "/trabajos", label: "Trabajos", icon: <IconBriefcase /> },
   { to: "/appointments", label: "Citas", icon: <IconCalendar /> },
   { to: "/scraper", label: "Captación Maps", icon: <IconMap /> },
+  { to: "/designs", label: "Diseño", icon: <IconPalette /> },
   { to: "/analytics", label: "Web Analytics", sublabel: "codeviaesp.com", icon: <IconChart /> },
 ];
 

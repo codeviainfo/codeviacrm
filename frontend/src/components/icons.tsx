@@ -273,3 +273,15 @@ export function IconChart(p: IconProps) {
     </svg>
   );
 }
+
+export function IconPalette(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M12 21a9 9 0 1 1 0-18c4.97 0 9 3.582 9 7.2 0 2.21-1.79 3.6-3.6 3.6h-2.09c-.98 0-1.71.9-1.4 1.83.14.42.22.86.22 1.29A2.63 2.63 0 0 1 12 21z" />
+      <circle cx="6.5" cy="11.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="9.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="14.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="11.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}

@@ -59,3 +59,43 @@ export interface Service {
     city?: string | null;
   };
 }
+
+export type BrandTemplateCategory = "flyer" | "social_post" | "banner";
+
+export interface BrandTemplateField {
+  type: "text" | "image" | "chart";
+}
+
+export interface BrandTemplate {
+  id: string;
+  canvaTemplateId: string;
+  name: string;
+  category: BrandTemplateCategory;
+  thumbnailUrl?: string | null;
+  fieldSchema: Record<string, BrandTemplateField>;
+  active: boolean;
+  createdAt: string;
+}
+
+export type DesignStatus = "pending" | "success" | "failed";
+
+export interface Design {
+  id: string;
+  brandTemplateId: string;
+  brandTemplate?: { id: string; name: string; category: BrandTemplateCategory };
+  title?: string | null;
+  status: DesignStatus;
+  editUrl?: string | null;
+  thumbnailUrl?: string | null;
+  exportedFileUrl?: string | null;
+  exportFormat?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CanvaConnectionStatus {
+  connected: boolean;
+  scope?: string;
+  expiresAt?: string;
+}
