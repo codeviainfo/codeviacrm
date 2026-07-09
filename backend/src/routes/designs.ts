@@ -3,193 +3,88 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthRequest } from "../middleware/auth";
-import { getConnectionStatus } from "../services/canvaAuthService";
 import {
-  getBrandTemplateDataset,
-  createAutofillJob,
-  getAutofillJob,
-  uploadAssetFromUrl,
-  createExportJob,
-  pollExportJob,
-  AutofillFieldValue,
-} from "../services/canvaDesignService";
+  isClaudeConfigured,
+  generateDesignHtml,
+  DESIGN_DIMENSIONS,
+} from "../services/claudeDesignService";
+import { renderHtmlToPng } from "../services/designRenderService";
 
 const router = Router();
-router.use(requireAuth);
-
-const templateSchema = z.object({
-  canvaTemplateId: z.string().min(1),
-  name: z.string().min(1),
-  category: z.enum(["flyer", "social_post", "banner"]),
-  thumbnailUrl: z.string().url().optional(),
-});
-
-const updateTemplateSchema = z.object({ active: z.boolean() });
-
-const fieldValueSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("text"), text: z.string() }),
-  z.object({ type: z.literal("image"), url: z.string().url() }),
-]);
 
 const createDesignSchema = z.object({
-  brandTemplateId: z.string().min(1),
+  category: z.enum(["flyer", "social_post", "banner"]),
   title: z.string().optional(),
-  fields: z.record(fieldValueSchema),
+  brief: z.string().min(1, "Describe qué quieres generar"),
+  referenceImageUrl: z.string().url().optional(),
 });
 
-const exportSchema = z.object({ format: z.enum(["png", "pdf", "jpg"]) });
-
-const DESIGN_INCLUDE = {
-  brandTemplate: { select: { id: true, name: true, category: true } },
+// Campos listados en historial/detalle — nunca incluye `imageData` (el PNG
+// completo), que solo viaja por GET /:id/image.
+const DESIGN_LIST_SELECT = {
+  id: true,
+  category: true,
+  title: true,
+  brief: true,
+  referenceImageUrl: true,
+  status: true,
+  errorMessage: true,
+  createdAt: true,
+  updatedAt: true,
 } as const;
 
-// "Poll en la lectura": si el diseño sigue pending, consulta el job de
-// autofill en Canva y actualiza la fila si ya resolvió. No hay
-// infraestructura de colas en este backend, así que esto sustituye a un
-// worker en segundo plano — el frontend ya vuelve a pedir la lista/el
-// diseño cada pocos segundos mientras algo esté pending.
-async function resolvePendingDesign(design: any) {
-  if (design.status !== "pending") return design;
-
-  try {
-    const job = await getAutofillJob(design.canvaJobId);
-    if (job.status === "success" && job.design) {
-      return prisma.design.update({
-        where: { id: design.id },
-        data: {
-          status: "success",
-          canvaDesignId: job.design.id,
-          editUrl: job.design.editUrl,
-          thumbnailUrl: job.design.thumbnailUrl,
-        },
-        include: DESIGN_INCLUDE,
-      });
-    }
-    if (job.status === "failed") {
-      return prisma.design.update({
-        where: { id: design.id },
-        data: { status: "failed", errorMessage: job.error?.message ?? "Error desconocido de Canva" },
-        include: DESIGN_INCLUDE,
-      });
-    }
-  } catch {
-    // No se pudo consultar el job todavía (p.ej. Canva desconectado); se
-    // deja el diseño en pending y se reintenta en la próxima lectura.
-  }
-  return design;
-}
-
-/* ------------------------------------------------------------- Conexión */
-
-router.get("/status", async (_req, res) => {
-  res.json(await getConnectionStatus());
+// SIN requireAuth y declarada antes de router.use(requireAuth): un <img src>
+// no puede llevar cabecera Authorization, así que esta ruta se apoya en que
+// el id es un UUID no adivinable — mismo patrón que /api/track (público).
+router.get("/:id/image", async (req, res) => {
+  const design = await prisma.design.findUnique({
+    where: { id: req.params.id },
+    select: { imageData: true, imageMime: true },
+  });
+  if (!design || !design.imageData) return res.status(404).end();
+  res.set("Content-Type", design.imageMime || "image/png");
+  res.send(design.imageData);
 });
 
-/* ------------------------------------------------------- Plantillas ---- */
+router.use(requireAuth);
 
-router.get("/templates", async (req, res) => {
-  const { category } = req.query;
-  const where: Prisma.BrandTemplateWhereInput = { active: true };
-  if (category === "flyer" || category === "social_post" || category === "banner") {
-    where.category = category;
-  }
-  const templates = await prisma.brandTemplate.findMany({ where, orderBy: { createdAt: "desc" } });
-  res.json(templates);
-});
-
-// Registra una plantilla de marca creada previamente en Canva: cachea su
-// esquema de campos rellenables (dataset API) para no llamar a Canva en
-// cada carga de página del formulario de generación.
-router.post("/templates", async (req, res) => {
-  const parsed = templateSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.flatten() });
-  }
-  const { canvaTemplateId, name, category, thumbnailUrl } = parsed.data;
-
-  let fieldSchema;
-  try {
-    fieldSchema = await getBrandTemplateDataset(canvaTemplateId);
-  } catch (err: any) {
-    return res.status(400).json({ error: `No se pudo leer la plantilla en Canva: ${err.message}` });
-  }
-
-  try {
-    const template = await prisma.brandTemplate.create({
-      data: { canvaTemplateId, name, category, thumbnailUrl, fieldSchema },
-    });
-    res.status(201).json(template);
-  } catch (err: any) {
-    if (err.code === "P2002") {
-      return res.status(409).json({ error: "Esta plantilla ya está registrada" });
-    }
-    throw err;
-  }
-});
-
-// Solo desactiva — no hay DELETE duro: los Design existentes referencian la
-// plantilla con onDelete Cascade y borrarla se llevaría el historial.
-router.patch("/templates/:id", async (req, res) => {
-  const parsed = updateTemplateSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.flatten() });
-  }
-  try {
-    const template = await prisma.brandTemplate.update({
-      where: { id: req.params.id },
-      data: { active: parsed.data.active },
-    });
-    res.json(template);
-  } catch {
-    res.status(404).json({ error: "Plantilla no encontrada" });
-  }
-});
-
-/* ---------------------------------------------------------- Generación */
-
-// Descarga+sube cualquier campo de imagen a Canva, crea el job de autofill
-// y responde de inmediato con status=pending — no espera a que el job
-// resuelva (puede tardar varios segundos); el frontend hace polling vía
-// GET /:id.
+// Genera la pieza de principio a fin de forma síncrona (llamada a Claude +
+// render con Playwright, unos segundos): no hay infraestructura de colas en
+// este backend y el volumen esperado de este módulo es bajo, así que una
+// espera de varios segundos en el botón "Generar" es UX aceptable.
 router.post("/", async (req: AuthRequest, res) => {
   const parsed = createDesignSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
-  const { brandTemplateId, title, fields } = parsed.data;
-
-  const template = await prisma.brandTemplate.findUnique({ where: { id: brandTemplateId } });
-  if (!template || !template.active) {
-    return res.status(404).json({ error: "Plantilla no encontrada" });
+  if (!isClaudeConfigured()) {
+    return res.status(400).json({ error: "Falta configurar ANTHROPIC_API_KEY" });
   }
 
+  const { category, title, brief, referenceImageUrl } = parsed.data;
+  const { width, height } = DESIGN_DIMENSIONS[category];
+
+  const design = await prisma.design.create({
+    data: { category, title, brief, referenceImageUrl, status: "pending", createdByUserId: req.userId },
+    select: DESIGN_LIST_SELECT,
+  });
+
   try {
-    const data: Record<string, AutofillFieldValue> = {};
-    for (const [key, value] of Object.entries(fields)) {
-      if (value.type === "text") {
-        data[key] = { type: "text", text: value.text };
-      } else {
-        const assetId = await uploadAssetFromUrl(value.url, `${brandTemplateId}-${key}`);
-        data[key] = { type: "image", asset_id: assetId };
-      }
-    }
-
-    const canvaJobId = await createAutofillJob(template.canvaTemplateId, title, data);
-
-    const design = await prisma.design.create({
-      data: {
-        brandTemplateId,
-        title,
-        status: "pending",
-        canvaJobId,
-        createdByUserId: req.userId,
-      },
-      include: DESIGN_INCLUDE,
+    const html = await generateDesignHtml({ category, brief, title, referenceImageUrl });
+    const png = await renderHtmlToPng(html, width, height);
+    const updated = await prisma.design.update({
+      where: { id: design.id },
+      data: { status: "success", imageData: png, imageMime: "image/png" },
+      select: DESIGN_LIST_SELECT,
     });
-
-    res.status(201).json(design);
+    res.status(201).json(updated);
   } catch (err: any) {
-    res.status(502).json({ error: "No se pudo generar el diseño", details: err.message });
+    const updated = await prisma.design.update({
+      where: { id: design.id },
+      data: { status: "failed", errorMessage: err.message || "Error desconocido al generar el diseño" },
+      select: DESIGN_LIST_SELECT,
+    });
+    res.status(502).json(updated);
   }
 });
 
@@ -200,59 +95,25 @@ router.get("/", async (req, res) => {
     where.status = status;
   }
   if (category === "flyer" || category === "social_post" || category === "banner") {
-    where.brandTemplate = { category };
+    where.category = category;
   }
 
   const designs = await prisma.design.findMany({
     where,
     orderBy: { createdAt: "desc" },
     take: 200,
-    include: DESIGN_INCLUDE,
+    select: DESIGN_LIST_SELECT,
   });
-
-  const resolved = await Promise.all(designs.map((d) => resolvePendingDesign(d)));
-  res.json(resolved);
+  res.json(designs);
 });
 
 router.get("/:id", async (req, res) => {
   const design = await prisma.design.findUnique({
     where: { id: req.params.id },
-    include: DESIGN_INCLUDE,
+    select: DESIGN_LIST_SELECT,
   });
   if (!design) return res.status(404).json({ error: "Diseño no encontrado" });
-  res.json(await resolvePendingDesign(design));
-});
-
-// Acción explícita del usuario ("Exportar") — aquí sí se hace un sondeo
-// síncrono acotado (ver pollExportJob) porque una espera de varios
-// segundos es UX esperada en este punto.
-router.post("/:id/export", async (req, res) => {
-  const parsed = exportSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.flatten() });
-  }
-
-  const design = await prisma.design.findUnique({ where: { id: req.params.id } });
-  if (!design) return res.status(404).json({ error: "Diseño no encontrado" });
-  if (design.status !== "success" || !design.canvaDesignId) {
-    return res.status(400).json({ error: "El diseño todavía no está listo para exportar" });
-  }
-
-  try {
-    const jobId = await createExportJob(design.canvaDesignId, parsed.data.format);
-    const job = await pollExportJob(jobId);
-    if (job.status !== "success" || !job.urls?.length) {
-      return res.status(502).json({ error: "La exportación no terminó a tiempo, inténtalo de nuevo" });
-    }
-    const updated = await prisma.design.update({
-      where: { id: design.id },
-      data: { exportedFileUrl: job.urls[0], exportFormat: parsed.data.format },
-      include: DESIGN_INCLUDE,
-    });
-    res.json(updated);
-  } catch (err: any) {
-    res.status(502).json({ error: err.message });
-  }
+  res.json(design);
 });
 
 router.delete("/:id", async (req, res) => {

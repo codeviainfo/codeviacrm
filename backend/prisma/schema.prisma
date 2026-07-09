@@ -189,59 +189,10 @@ model ScrapeCandidate {
   @@index([hasWebsite])
 }
 
-// Conexión única (singleton) de la app de Canva del CRM — no por-usuario,
-// coherente con que este CRM no es multi-tenant y las plantillas de marca
-// son un activo de la organización, no personal.
-model CanvaConnection {
-  id                String   @id @default(uuid())
-  accessToken       String
-  refreshToken      String
-  tokenType         String   @default("Bearer")
-  scope             String
-  expiresAt         DateTime
-  connectedByUserId String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-// Puente transitorio entre el redirect de autorización y el callback: el
-// code_verifier de PKCE debe vivir solo en el servidor (nunca en el
-// navegador), indexado por `state`. Se borra inmediatamente tras usarse
-// (un solo uso).
-model CanvaOAuthState {
-  id            String   @id @default(uuid())
-  state         String   @unique
-  codeVerifier  String
-  redirectAfter String?
-  createdAt     DateTime @default(now())
-
-  @@index([createdAt])
-}
-
-enum BrandTemplateCategory {
+enum DesignCategory {
   flyer
   social_post
   banner
-}
-
-// Una plantilla de marca de Canva registrada para su uso en este módulo.
-// El registro es manual (se pega el brand_template_id desde Canva); se
-// cachea aquí el esquema de campos rellenables (dataset API) para no
-// llamar a Canva en cada carga de página.
-model BrandTemplate {
-  id              String                @id @default(uuid())
-  canvaTemplateId String                @unique
-  name            String
-  category        BrandTemplateCategory
-  thumbnailUrl    String?
-  fieldSchema     Json
-  active          Boolean               @default(true)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  designs         Design[]
-
-  @@index([category])
-  @@index([active])
 }
 
 enum DesignStatus {
@@ -250,25 +201,26 @@ enum DesignStatus {
   failed
 }
 
-// Una instancia de diseño generado (un job de autofill -> un diseño en Canva).
+// Una pieza de contenido generada por IA (Claude escribe el HTML/CSS de la
+// pieza siguiendo la guía de marca de Codevia; Playwright lo renderiza a
+// PNG). `imageData` guarda el PNG directamente en Postgres — el volumen
+// esperado de este módulo interno es bajo, así que evita montar un volumen
+// de archivos y un servidor de estáticos solo para esto.
 model Design {
-  id              String        @id @default(uuid())
-  brandTemplateId String
-  brandTemplate   BrandTemplate @relation(fields: [brandTemplateId], references: [id], onDelete: Cascade)
+  id              String         @id @default(uuid())
+  category        DesignCategory
   title           String?
-  status          DesignStatus  @default(pending)
-  canvaJobId      String
-  canvaDesignId   String?
-  editUrl         String?
-  thumbnailUrl    String?
-  exportedFileUrl String?
-  exportFormat    String?
+  brief           String
+  referenceImageUrl String?
+  status          DesignStatus   @default(pending)
+  imageData       Bytes?
+  imageMime       String?
   errorMessage    String?
   createdByUserId String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  @@index([brandTemplateId])
+  @@index([category])
   @@index([status])
   @@index([createdAt])
 }
