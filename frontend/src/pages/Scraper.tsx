@@ -351,7 +351,110 @@ export function Scraper() {
                 description="Lanza una búsqueda o ajusta los filtros para ver resultados."
               />
             ) : (
-              <div className="scrollbar-slim overflow-x-auto">
+              <>
+              {/* Mobile: card list */}
+              <div className="md:hidden">
+                {statusFilter === "pending" && pendingIds.length > 0 && (
+                  <label className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 text-xs font-medium text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      className="h-4 w-4 rounded border-slate-300 accent-brand-600"
+                    />
+                    Seleccionar todos
+                  </label>
+                )}
+                <ul className="divide-y divide-slate-50">
+                  {candidates.map((c) => (
+                    <li
+                      key={c.id}
+                      className={cn(
+                        "space-y-2.5 px-4 py-3.5",
+                        selected.has(c.id) && "bg-brand-50/50"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        {statusFilter === "pending" && (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(c.id)}
+                            onChange={() => toggle(c.id)}
+                            className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 accent-brand-600"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-800">{c.businessName || c.name}</p>
+                          <p className="text-xs text-slate-400">
+                            {[c.address, c.phone].filter(Boolean).join(" · ") || "Sin datos"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {c.hasWebsite ? (
+                          <a
+                            href={c.website || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 hover:bg-emerald-100"
+                          >
+                            <IconGlobe className="h-3.5 w-3.5" /> Con web
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-500/20">
+                            Sin web
+                          </span>
+                        )}
+                        {c.rating && (
+                          <span className="inline-flex items-center gap-1 text-xs text-slate-600">
+                            <IconStar className="h-3.5 w-3.5 text-amber-400" />
+                            {c.rating}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={mapsHref(c)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-surface px-2.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          <IconExternal className="h-4 w-4 text-brand-600" /> Maps
+                        </a>
+                        {c.status === "pending" ? (
+                          <div className="ml-auto flex gap-1.5">
+                            <button
+                              onClick={() => runAction("accept", [c.id])}
+                              disabled={acting}
+                              title="Pasar a lead"
+                              className="flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 text-[13px] font-semibold text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+                            >
+                              <IconCheck className="h-4 w-4" /> Lead
+                            </button>
+                            <button
+                              onClick={() => runAction("reject", [c.id])}
+                              disabled={acting}
+                              title="Rechazar"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                            >
+                              <IconX className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="ml-auto">
+                            <Pill tone={c.status === "accepted" ? "completed" : "cancelled"}>
+                              {c.status === "accepted" ? "Lead" : "Rechazado"}
+                            </Pill>
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Desktop: table */}
+              <div className="scrollbar-slim hidden overflow-x-auto md:block">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -463,6 +566,7 @@ export function Scraper() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Card>
         </div>

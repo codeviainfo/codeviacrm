@@ -83,9 +83,9 @@ function ShareRow({
 }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
-    <li className="flex items-center gap-3 px-5 py-2.5">
+    <li className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
       {prefix && <span className="w-6 shrink-0 text-center text-base leading-none">{prefix}</span>}
-      <span className="w-32 shrink-0 truncate text-sm text-slate-700" title={label}>
+      <span className="w-24 shrink-0 truncate text-sm text-slate-700 sm:w-32" title={label}>
         {label}
       </span>
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">

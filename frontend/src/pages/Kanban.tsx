@@ -133,13 +133,38 @@ export function Kanban() {
     }
   }
 
+  // Touch-friendly fallback: move a card via the select shown on small screens,
+  // where HTML5 drag & drop is unavailable.
+  async function moveTo(client: Client, targetStatus: ClientStatus) {
+    if (client.status === targetStatus) return;
+    setClients((prev) =>
+      prev.map((c) => (c.id === client.id ? { ...c, status: targetStatus } : c))
+    );
+    try {
+      await api.put(`/clients/${client.id}`, { status: targetStatus });
+    } catch {
+      load(); // rollback on error
+    }
+  }
+
   const byStatus = (status: ClientStatus) => clients.filter((c) => c.status === status);
 
   return (
     <div>
       <PageHeader
         title="Seguimiento de clientes"
-        subtitle="Arrastra las tarjetas entre columnas para cambiar su estado. Al acercarte al borde el tablero se desplaza solo."
+        subtitle={
+          <>
+            <span className="hidden lg:inline">
+              Arrastra las tarjetas entre columnas para cambiar su estado. Al acercarte al borde
+              el tablero se desplaza solo.
+            </span>
+            <span className="lg:hidden">
+              Usa el selector de cada tarjeta para cambiar su estado. Desliza para ver más
+              columnas.
+            </span>
+          </>
+        }
       />
 
       <div
@@ -159,7 +184,7 @@ export function Kanban() {
           return (
             <div
               key={col.status}
-              className="flex w-72 shrink-0 flex-col"
+              className="flex w-[80vw] max-w-[18rem] shrink-0 flex-col sm:w-72 sm:max-w-none"
               onDragOver={(e) => { e.preventDefault(); setOverStatus(col.status); }}
               onDragLeave={() => setOverStatus(null)}
               onDrop={() => handleDrop(col.status)}
@@ -186,6 +211,7 @@ export function Kanban() {
                     isDragging={draggingId === client.id}
                     onDragStart={() => handleDragStart(client)}
                     onDragEnd={handleDragEnd}
+                    onMove={(status) => moveTo(client, status)}
                   />
                 ))}
                 {cards.length === 0 && (
@@ -207,11 +233,13 @@ function KanbanCard({
   isDragging,
   onDragStart,
   onDragEnd,
+  onMove,
 }: {
   client: Client;
   isDragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onMove: (status: ClientStatus) => void;
 }) {
   return (
     <div
@@ -264,6 +292,21 @@ function KanbanCard({
           </a>
         )}
       </div>
+
+      {/* Touch fallback: change status without drag & drop (drag is mouse-only) */}
+      <select
+        value={client.status}
+        onChange={(e) => onMove(e.target.value as ClientStatus)}
+        onClick={(e) => e.stopPropagation()}
+        className="mt-2.5 h-8 w-full rounded-lg border border-slate-200 bg-surface px-2 text-xs text-slate-600 focus:border-brand-400 focus:outline-none lg:hidden"
+        aria-label="Cambiar estado"
+      >
+        {COLUMNS.map((col) => (
+          <option key={col.status} value={col.status}>
+            {col.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

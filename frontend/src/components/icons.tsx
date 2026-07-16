@@ -262,6 +262,14 @@ export function IconPrinter(p: IconProps) {
   );
 }
 
+export function IconMenu(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
 export function IconChart(p: IconProps) {
   return (
     <svg {...base} {...p}>

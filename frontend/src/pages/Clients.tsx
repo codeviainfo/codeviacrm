@@ -262,32 +262,33 @@ export function Clients() {
             <option value="inactive">Inactivo</option>
             <option value="archived">Archivado</option>
           </Select>
-          {/* Advanced toggle */}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setShowAdvanced((v) => !v)}
-            className={cn(showAdvanced || activeAdvancedCount > 0 ? "border-brand-400 text-brand-700" : "")}
-          >
-            <IconFilter className="h-4 w-4" />
-            Filtros
-            {activeAdvancedCount > 0 && (
-              <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
-                {activeAdvancedCount}
-              </span>
-            )}
-          </Button>
-          {/* Export */}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleExport}
-            disabled={exporting}
-            title="Exportar lista filtrada a CSV"
-          >
-            <IconDownload className="h-4 w-4" />
-            {exporting ? "Exportando…" : "Exportar CSV"}
-          </Button>
+          {/* Advanced toggle + export share a row on mobile */}
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className={cn(showAdvanced || activeAdvancedCount > 0 ? "border-brand-400 text-brand-700" : "")}
+            >
+              <IconFilter className="h-4 w-4" />
+              Filtros
+              {activeAdvancedCount > 0 && (
+                <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                  {activeAdvancedCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleExport}
+              disabled={exporting}
+              title="Exportar lista filtrada a CSV"
+            >
+              <IconDownload className="h-4 w-4" />
+              {exporting ? "Exportando…" : "Exportar CSV"}
+            </Button>
+          </div>
         </div>
 
         {/* Advanced filters panel */}
@@ -372,7 +373,43 @@ export function Clients() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="scrollbar-slim overflow-x-auto">
+        {/* Mobile: card list */}
+        <ul className="divide-y divide-slate-100 md:hidden">
+          {clients.map((c) => (
+            <li key={c.id} className="space-y-2.5 px-4 py-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <Link
+                  to={`/clients/${c.id}`}
+                  className="min-w-0 truncate text-sm font-semibold text-slate-800 hover:text-brand-600"
+                >
+                  {c.businessName || c.name}
+                </Link>
+                <StatusBadge status={c.status} />
+              </div>
+              {(c.category || c.zone) && (
+                <p className="truncate text-xs text-slate-400">
+                  {[c.category, c.zone].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              {c.phone && (
+                <a href={`tel:${c.phone}`} className="block text-sm text-brand-600">
+                  {c.phone}
+                </a>
+              )}
+              <ClientRowActions
+                client={c}
+                onConvert={handleConvert}
+                onArchive={handleArchive}
+                onReactivate={handleReactivate}
+                onDelete={handleDelete}
+                onEdit={(cl) => navigate(`/clients/${cl.id}`)}
+              />
+            </li>
+          ))}
+        </ul>
+
+        {/* Desktop: table */}
+        <div className="scrollbar-slim hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -410,63 +447,15 @@ export function Clients() {
                     <StatusBadge status={c.status} />
                   </td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-2">
-                      {hasLocation(c) && (
-                        <a
-                          href={mapsHref(c)}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Ver en Google Maps"
-                          aria-label="Ver en Google Maps"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-brand-600 hover:bg-slate-50"
-                        >
-                          <IconExternal className="h-4 w-4" />
-                        </a>
-                      )}
-                      {c.status === "lead" && (
-                        <Button size="sm" variant="secondary" onClick={() => handleConvert(c)}>
-                          <IconCheck className="h-4 w-4" /> Convertir
-                        </Button>
-                      )}
-                      {c.status === "archived" ? (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleReactivate(c)}
-                          title="Reactivar como lead"
-                        >
-                          <IconCheck className="h-4 w-4" /> Reactivar
-                        </Button>
-                      ) : (
-                        c.status !== "client" && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleArchive(c)}
-                            title="Archivar (rechazó la oferta)"
-                          >
-                            <IconArchive className="h-4 w-4" />
-                          </Button>
-                        )
-                      )}
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => navigate(`/clients/${c.id}`)}
-                        aria-label="Editar cliente"
-                        title="Editar cliente"
-                      >
-                        <IconEdit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => handleDelete(c)}
-                        aria-label="Eliminar"
-                      >
-                        <IconTrash className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <ClientRowActions
+                      align="end"
+                      client={c}
+                      onConvert={handleConvert}
+                      onArchive={handleArchive}
+                      onReactivate={handleReactivate}
+                      onDelete={handleDelete}
+                      onEdit={(cl) => navigate(`/clients/${cl.id}`)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -481,6 +470,79 @@ export function Clients() {
           />
         )}
       </Card>
+    </div>
+  );
+}
+
+function ClientRowActions({
+  client: c,
+  align,
+  onConvert,
+  onArchive,
+  onReactivate,
+  onDelete,
+  onEdit,
+}: {
+  client: Client;
+  align?: "end";
+  onConvert: (c: Client) => void;
+  onArchive: (c: Client) => void;
+  onReactivate: (c: Client) => void;
+  onDelete: (c: Client) => void;
+  onEdit: (c: Client) => void;
+}) {
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2", align === "end" && "justify-end")}>
+      {hasLocation(c) && (
+        <a
+          href={mapsHref(c)}
+          target="_blank"
+          rel="noreferrer"
+          title="Ver en Google Maps"
+          aria-label="Ver en Google Maps"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-brand-600 hover:bg-slate-50"
+        >
+          <IconExternal className="h-4 w-4" />
+        </a>
+      )}
+      {c.status === "lead" && (
+        <Button size="sm" variant="secondary" onClick={() => onConvert(c)}>
+          <IconCheck className="h-4 w-4" /> Convertir
+        </Button>
+      )}
+      {c.status === "archived" ? (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onReactivate(c)}
+          title="Reactivar como lead"
+        >
+          <IconCheck className="h-4 w-4" /> Reactivar
+        </Button>
+      ) : (
+        c.status !== "client" && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onArchive(c)}
+            title="Archivar (rechazó la oferta)"
+          >
+            <IconArchive className="h-4 w-4" />
+          </Button>
+        )
+      )}
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => onEdit(c)}
+        aria-label="Editar cliente"
+        title="Editar cliente"
+      >
+        <IconEdit className="h-4 w-4" />
+      </Button>
+      <Button size="sm" variant="danger" onClick={() => onDelete(c)} aria-label="Eliminar">
+        <IconTrash className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

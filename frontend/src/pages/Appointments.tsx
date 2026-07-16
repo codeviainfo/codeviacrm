@@ -313,8 +313,8 @@ export function Appointments() {
       {/* ── LIST VIEW ── */}
       {view === "list" && (
         <>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 sm:max-w-xs">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="relative w-full sm:w-auto sm:max-w-xs sm:flex-1">
               <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
               <Input
                 placeholder="Buscar por título o cliente…"
@@ -334,31 +334,80 @@ export function Appointments() {
               <option value="completed">Completada</option>
               <option value="cancelled">Cancelada</option>
             </Select>
-            <Field label="Desde" className="!block">
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-40"
-              />
-            </Field>
-            <Field label="Hasta" className="!block">
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-40"
-              />
-            </Field>
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:items-end">
+              <Field label="Desde">
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="sm:w-40"
+                />
+              </Field>
+              <Field label="Hasta">
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="sm:w-40"
+                />
+              </Field>
+            </div>
             {hasFilters && (
-              <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+              <Button type="button" variant="ghost" size="sm" onClick={clearFilters} className="self-start sm:self-auto">
                 <IconX className="h-3.5 w-3.5" /> Limpiar
               </Button>
             )}
           </div>
 
           <Card className="overflow-hidden">
-            <div className="scrollbar-slim overflow-x-auto">
+            {/* Mobile: card list */}
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {filtered.map((a) => (
+                <li key={a.id} className="space-y-2.5 px-4 py-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-800">{a.title}</p>
+                      <p className="truncate text-xs text-slate-400">
+                        {a.client?.businessName || a.client?.name}
+                      </p>
+                    </div>
+                    <Pill tone={a.status}>{statusLabels[a.status]}</Pill>
+                  </div>
+                  <p className="text-sm text-slate-600">
+                    {new Date(a.scheduledAt).toLocaleString("es-ES", {
+                      weekday: "short",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={a.status}
+                      onChange={(e) => updateStatus(a, e.target.value as Appointment["status"])}
+                      className="h-8 flex-1 text-xs"
+                    >
+                      <option value="pending">Pendiente</option>
+                      <option value="confirmed">Confirmada</option>
+                      <option value="completed">Completada</option>
+                      <option value="cancelled">Cancelada</option>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handleDelete(a)}
+                      aria-label="Eliminar"
+                    >
+                      <IconTrash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop: table */}
+            <div className="scrollbar-slim hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -467,6 +516,8 @@ export function Appointments() {
 
           {/* Calendar grid */}
           <Card className="overflow-hidden">
+            <div className="scrollbar-slim overflow-x-auto">
+              <div className="min-w-[560px]">
             {/* Day name headers */}
             <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/60">
               {DAY_HEADERS.map((d) => (
@@ -540,6 +591,8 @@ export function Appointments() {
                 );
               })}
             </div>
+              </div>
+            </div>
           </Card>
 
           {/* Selected appointment detail panel */}
@@ -570,7 +623,7 @@ export function Appointments() {
                     <p className="mt-2 text-sm text-slate-500">{selectedAppt.description}</p>
                   )}
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <Select
                     value={selectedAppt.status}
                     onChange={(e) =>

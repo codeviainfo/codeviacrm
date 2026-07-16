@@ -95,5 +95,5 @@ export function MapDraw({ center, zoom = 14, onPolygon }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [center[0], center[1]]);
 
-  return <div ref={containerRef} className="h-80 w-full rounded-xl" />;
+  return <div ref={containerRef} className="h-64 w-full rounded-xl sm:h-80" />;
 }

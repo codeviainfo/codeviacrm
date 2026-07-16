@@ -414,12 +414,12 @@ export function ClientDetail() {
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-600 text-xl font-bold text-white">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-600 text-xl font-bold text-white sm:h-14 sm:w-14">
             {(client.businessName || client.name).charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h1 className="break-words text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
                 {client.businessName || client.name}
               </h1>
               <StatusBadge status={client.status} />
@@ -429,7 +429,7 @@ export function ClientDetail() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {!editing ? (
             <>
               {client.status === "lead" && (
@@ -832,7 +832,7 @@ function InfoRow({
       <span className="mt-0.5 text-slate-400">{icon}</span>
       <div className="min-w-0">
         <dt className="text-xs font-medium text-slate-400">{label}</dt>
-        <dd className="truncate text-sm text-slate-800">{value || "—"}</dd>
+        <dd className="break-words text-sm text-slate-800">{value || "—"}</dd>
       </div>
     </div>
   );
