@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { Client, Service, ServiceStatus } from "../api/types";
+import { SERVICE_STATUS_CLS, SERVICE_STATUS_LABEL, fmtDate, fmtMoney } from "../lib/service";
 import {
   Button,
   Card,
@@ -24,6 +25,7 @@ import {
   IconCalendar,
   IconCheck,
   IconClients,
+  IconDownload,
   IconEdit,
   IconExternal,
   IconGlobe,
@@ -32,150 +34,11 @@ import {
   IconPhone,
   IconPin,
   IconPlus,
-  IconPrinter,
   IconTrash,
   IconX,
 } from "../components/icons";
 import { hasLocation, mapsHref } from "../lib/maps";
-
-/* ---------------------------------------------------------------- helpers */
-
-const SERVICE_STATUS_LABEL: Record<ServiceStatus, string> = {
-  pending: "Pendiente",
-  completed: "Completado",
-  invoiced: "Facturado",
-};
-
-const SERVICE_STATUS_CLS: Record<ServiceStatus, string> = {
-  pending: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  completed: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  invoiced: "bg-brand-50 text-brand-700 ring-brand-600/20",
-};
-
-function fmtMoney(n: number) {
-  return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-/* ---------------------------------------------------------- budget print */
-
-function printBudget(client: Client, services: Service[]) {
-  const subtotal = services.reduce((s, r) => s + r.quantity * r.unitPrice, 0);
-  const iva = subtotal * 0.21;
-  const total = subtotal + iva;
-  const ref = `PRE-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
-  const today = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
-
-  const rows = services
-    .map(
-      (s) => `
-      <tr>
-        <td class="desc">
-          <strong>${s.title}</strong>
-          ${s.description ? `<br><span class="sub">${s.description}</span>` : ""}
-        </td>
-        <td class="num">${s.quantity}</td>
-        <td class="num">${fmtMoney(s.unitPrice)}</td>
-        <td class="num">${fmtMoney(s.quantity * s.unitPrice)}</td>
-      </tr>`
-    )
-    .join("");
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Presupuesto ${ref}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1e293b; padding: 48px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
-  .brand { font-size: 22px; font-weight: 800; color: #1e3a8a; letter-spacing: -0.5px; }
-  .brand span { color: #3b82f6; }
-  .meta { text-align: right; color: #64748b; font-size: 12px; line-height: 1.6; }
-  .meta strong { display: block; font-size: 15px; color: #1e293b; }
-  .divider { border: none; border-top: 2px solid #e2e8f0; margin: 24px 0; }
-  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px; }
-  .party h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 8px; }
-  .party p { line-height: 1.7; color: #1e293b; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-  thead tr { background: #1e3a8a; color: #fff; }
-  thead th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-  thead th.num { text-align: right; }
-  tbody tr:nth-child(even) { background: #f8fafc; }
-  tbody td { padding: 10px 12px; vertical-align: top; border-bottom: 1px solid #e2e8f0; }
-  td.desc { width: 55%; }
-  td.num { text-align: right; white-space: nowrap; }
-  .sub { color: #64748b; font-size: 11px; }
-  .totals { margin-left: auto; width: 260px; }
-  .totals table { margin-bottom: 0; }
-  .totals td { padding: 6px 12px; border: none; font-size: 13px; }
-  .totals td:last-child { text-align: right; }
-  .totals .total-row td { font-weight: 800; font-size: 15px; border-top: 2px solid #1e3a8a; padding-top: 10px; }
-  .footer { margin-top: 48px; text-align: center; font-size: 11px; color: #94a3b8; }
-  @media print {
-    body { padding: 24px; }
-    @page { margin: 20mm; }
-  }
-</style>
-</head>
-<body>
-<div class="header">
-  <div class="brand">CODE<span>VIA</span></div>
-  <div class="meta">
-    <strong>PRESUPUESTO</strong>
-    Ref: ${ref}<br>
-    Fecha: ${today}
-  </div>
-</div>
-<hr class="divider">
-<div class="parties">
-  <div class="party">
-    <h4>De</h4>
-    <p><strong>Codevia</strong><br>codeviainfo@gmail.com</p>
-  </div>
-  <div class="party">
-    <h4>Para</h4>
-    <p>
-      <strong>${client.businessName || client.name}</strong><br>
-      ${client.name !== (client.businessName || client.name) ? client.name + "<br>" : ""}
-      ${client.email ? client.email + "<br>" : ""}
-      ${client.phone ? client.phone + "<br>" : ""}
-      ${[client.address, client.city].filter(Boolean).join(", ") || ""}
-    </p>
-  </div>
-</div>
-<table>
-  <thead>
-    <tr>
-      <th>Descripción</th>
-      <th class="num">Cant.</th>
-      <th class="num">Precio unit.</th>
-      <th class="num">Total</th>
-    </tr>
-  </thead>
-  <tbody>${rows}</tbody>
-</table>
-<div class="totals">
-  <table>
-    <tr><td>Subtotal</td><td>${fmtMoney(subtotal)}</td></tr>
-    <tr><td>IVA (21%)</td><td>${fmtMoney(iva)}</td></tr>
-    <tr class="total-row"><td>TOTAL</td><td>${fmtMoney(total)}</td></tr>
-  </table>
-</div>
-<div class="footer">Presupuesto válido por 30 días · Codevia — Desarrollo de software y automatización empresarial</div>
-<script>window.onload = () => { window.print(); }</script>
-</body>
-</html>`;
-
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
-}
+import { generateBudgetPdf } from "../lib/budgetPdf";
 
 /* -------------------------------------------------------- ServiceForm */
 
@@ -271,6 +134,7 @@ export function ClientDetail() {
   const [addingService, setAddingService] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [savingService, setSavingService] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   async function load() {
     const { data } = await api.get<Client>(`/clients/${id}`);
@@ -397,6 +261,16 @@ export function ClientDetail() {
     if (!confirm("¿Eliminar este trabajo?")) return;
     await api.delete(`/services/${serviceId}`);
     loadServices();
+  }
+
+  async function handleGenerateBudget() {
+    if (!client) return;
+    setGeneratingPdf(true);
+    try {
+      await generateBudgetPdf(client, services);
+    } finally {
+      setGeneratingPdf(false);
+    }
   }
 
   const subtotal = services.reduce((s, r) => s + r.quantity * r.unitPrice, 0);
@@ -649,9 +523,11 @@ export function ClientDetail() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => printBudget(client, services)}
+                      onClick={handleGenerateBudget}
+                      disabled={generatingPdf}
                     >
-                      <IconPrinter className="h-4 w-4" /> Presupuesto
+                      <IconDownload className="h-4 w-4" />
+                      {generatingPdf ? "Generando…" : "Presupuesto"}
                     </Button>
                   )}
                   {!addingService && !editingService && (

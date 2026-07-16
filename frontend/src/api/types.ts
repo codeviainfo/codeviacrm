@@ -49,4 +49,28 @@ export interface Service {
   date: string;
   createdAt: string;
   updatedAt: string;
+  client?: {
+    id: string;
+    name: string;
+    businessName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+  };
+}
+
+export type DesignCategory = "flyer" | "social_post" | "banner";
+export type DesignStatus = "pending" | "success" | "failed";
+
+export interface Design {
+  id: string;
+  category: DesignCategory;
+  title?: string | null;
+  brief: string;
+  referenceImageUrl?: string | null;
+  status: DesignStatus;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

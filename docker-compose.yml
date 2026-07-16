@@ -29,6 +29,7 @@ services:
       GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@codevia.com}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-codevia123}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       PORT: 4000
     ports:
       - "4000:4000"

@@ -3,6 +3,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { cn, ThemeToggle } from "./ui";
 import {
+  IconBriefcase,
   IconCalendar,
   IconChart,
   IconClients,
@@ -11,6 +12,7 @@ import {
   IconLogout,
   IconMap,
   IconMenu,
+  IconPalette,
   IconX,
 } from "./icons";
 
@@ -18,8 +20,10 @@ const nav: Array<{ to: string; label: string; sublabel?: string; icon: ReactNode
   { to: "/", label: "Dashboard", icon: <IconDashboard />, end: true },
   { to: "/clients", label: "Clientes", icon: <IconClients /> },
   { to: "/kanban", label: "Seguimiento", icon: <IconKanban /> },
+  { to: "/trabajos", label: "Trabajos", icon: <IconBriefcase /> },
   { to: "/appointments", label: "Citas", icon: <IconCalendar /> },
   { to: "/scraper", label: "Captación Maps", icon: <IconMap /> },
+  { to: "/designs", label: "Diseño", icon: <IconPalette /> },
   { to: "/analytics", label: "Web Analytics", sublabel: "codeviaesp.com", icon: <IconChart /> },
 ];
 

@@ -188,3 +188,39 @@ model ScrapeCandidate {
   @@index([status])
   @@index([hasWebsite])
 }
+
+enum DesignCategory {
+  flyer
+  social_post
+  banner
+}
+
+enum DesignStatus {
+  pending
+  success
+  failed
+}
+
+// Una pieza de contenido generada por IA (Claude escribe el HTML/CSS de la
+// pieza siguiendo la guía de marca de Codevia; Playwright lo renderiza a
+// PNG). `imageData` guarda el PNG directamente en Postgres — el volumen
+// esperado de este módulo interno es bajo, así que evita montar un volumen
+// de archivos y un servidor de estáticos solo para esto.
+model Design {
+  id              String         @id @default(uuid())
+  category        DesignCategory
+  title           String?
+  brief           String
+  referenceImageUrl String?
+  status          DesignStatus   @default(pending)
+  imageData       Bytes?
+  imageMime       String?
+  errorMessage    String?
+  createdByUserId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+}
