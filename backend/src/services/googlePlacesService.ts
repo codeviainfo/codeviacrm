@@ -18,6 +18,39 @@ export function isGooglePlacesConfigured(): boolean {
   return Boolean(process.env.GOOGLE_PLACES_API_KEY);
 }
 
+const MAX_PAGES = 3; // tope duro de la Text Search API: 3 páginas x 20 = 60 resultados
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchAllPages(query: string, apiKey: string): Promise<any[]> {
+  const results: any[] = [];
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const url = pageToken
+      ? `${PLACES_TEXT_SEARCH_URL}?pagetoken=${pageToken}&key=${apiKey}`
+      : `${PLACES_TEXT_SEARCH_URL}?query=${encodeURIComponent(query)}&key=${apiKey}`;
+
+    const response = await fetch(url);
+    const data = (await response.json()) as any;
+
+    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+      throw new Error(`Google Places API error: ${data.status} ${data.error_message ?? ""}`);
+    }
+
+    results.push(...((data.results ?? []) as any[]));
+
+    if (!data.next_page_token) break;
+    pageToken = data.next_page_token;
+    // el next_page_token de Google no está activo hasta ~2s después de emitido
+    await sleep(2000);
+  }
+
+  return results;
+}
+
 export async function searchPlacesByZoneAndCategory(
   zone: string,
   category: string
@@ -28,19 +61,10 @@ export async function searchPlacesByZoneAndCategory(
   }
 
   const query = `${category} en ${zone}`;
-  const url = `${PLACES_TEXT_SEARCH_URL}?query=${encodeURIComponent(query)}&key=${apiKey}`;
-
-  const response = await fetch(url);
-  const data = (await response.json()) as any;
-
-  if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-    throw new Error(`Google Places API error: ${data.status} ${data.error_message ?? ""}`);
-  }
-
-  const results = (data.results ?? []) as any[];
+  const results = await fetchAllPages(query, apiKey);
 
   const places = await Promise.all(
-    results.slice(0, 20).map(async (place) => {
+    results.map(async (place) => {
       const details = await fetchPlaceDetails(place.place_id, apiKey);
       return {
         googlePlaceId: place.place_id,
