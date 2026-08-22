@@ -3,8 +3,10 @@ import type { Page } from "playwright";
 import type { ScrapedPlace } from "./googlePlacesService";
 
 // How many businesses to open the detail panel for. Each one is a navigation,
-// so this bounds the total run time (~1-2s per place).
-const MAX_DETAILS = 20;
+// so this bounds the total run time (~1-2s per place). 60 mirrors the hard cap
+// of the Google Places API path (3 pages x 20) for consistent results between
+// both search methods.
+const MAX_DETAILS = 60;
 
 export async function scrapeGoogleMaps(zone: string, category: string): Promise<ScrapedPlace[]> {
   const browser = await chromium.launch({ headless: true });
@@ -137,12 +139,25 @@ async function dismissConsentDialog(page: Page) {
   }
 }
 
+// Scrolls the results feed until it stops growing (Google Maps lazy-loads
+// more cards as you approach the bottom) or we hit the iteration cap. Two
+// consecutive scrolls with no height change means we've reached the end of
+// the list (or Google's own ~120-result cap for a single search).
 async function autoScrollResults(page: Page, feedSelector: string) {
-  for (let i = 0; i < 5; i++) {
-    await page.evaluate((selector) => {
+  let lastHeight = 0;
+  let stableRounds = 0;
+
+  for (let i = 0; i < 15 && stableRounds < 2; i++) {
+    const height = await page.evaluate((selector) => {
       const feed = document.querySelector(selector);
-      if (feed) feed.scrollTop = feed.scrollHeight;
+      if (!feed) return 0;
+      feed.scrollTop = feed.scrollHeight;
+      return feed.scrollHeight;
     }, feedSelector);
+
     await page.waitForTimeout(1200);
+
+    stableRounds = height === lastHeight ? stableRounds + 1 : 0;
+    lastHeight = height;
   }
 }
