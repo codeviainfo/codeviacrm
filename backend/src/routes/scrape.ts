@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { isGooglePlacesConfigured, searchPlacesByZoneAndCategory, ScrapedPlace } from "../services/googlePlacesService";
-import { scrapeGoogleMaps } from "../services/mapsScraperService";
+import { GoogleBlockedError, scrapeGoogleMaps } from "../services/mapsScraperService";
 import { searchBusinessesInPolygon } from "../services/overpassService";
 
 const router = Router();
@@ -111,6 +111,17 @@ router.post("/", async (req, res) => {
       source = "playwright_fallback";
       places = await scrapeGoogleMaps(zone, category);
     } catch (scrapeError: any) {
+      // Blocked mid-run: keep what was scraped before the CAPTCHA, but still
+      // mark the job failed so the user knows the list is incomplete.
+      if (scrapeError instanceof GoogleBlockedError) {
+        const partial = await saveCandidates(job.id, scrapeError.partial, zone, category);
+        await prisma.scrapeJob.update({
+          where: { id: job.id },
+          data: { status: "failed", errorMessage: scrapeError.message, resultsCount: partial.length, source },
+        });
+        const saved = partial.length ? ` Se guardaron ${partial.length} resultados parciales.` : "";
+        return res.status(502).json({ error: scrapeError.message + saved, jobId: job.id, candidates: partial });
+      }
       await prisma.scrapeJob.update({
         where: { id: job.id },
         data: { status: "failed", errorMessage: scrapeError.message, source },

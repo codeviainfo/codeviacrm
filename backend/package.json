@@ -21,6 +21,7 @@
     "express": "^4.21.0",
     "fast-geoip": "^1.1.88",
     "jsonwebtoken": "^9.0.2",
+    "patchright": "1.48.2",
     "playwright": "1.48.0",
     "zod": "^3.23.8"
   },
